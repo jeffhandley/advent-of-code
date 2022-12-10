@@ -5,6 +5,42 @@ namespace Day2
 {
     public static class InputData
     {
+        public static IEnumerable<(char Theirs, char Mine)> GetClueRounds(bool cipherKnown = false)
+        {
+            var rounds = Clues.Split(Environment.NewLine);
+
+            foreach (var round in rounds)
+            {
+                string[] moves = round.Split(' ');
+                char theirs = moves[0][0];
+                char mine = moves[1][0];
+
+                yield return (theirs, Decipher(theirs, mine, cipherKnown));
+            }
+        }
+
+        private static char Decipher(char theirs, char mine, bool cipherKnown)
+        {
+            if (cipherKnown)
+            {
+                return theirs switch
+                {
+                    'A' => mine == 'X' ? 'C' : (mine == 'Y' ? 'A' : 'B'),
+                    'B' => mine == 'X' ? 'A' : (mine == 'Y' ? 'B' : 'C'),
+                    'C' => mine == 'X' ? 'B' : (mine == 'Y' ? 'C' : 'A'),
+                    _ => throw new ArgumentException(nameof(theirs)),
+                };
+            }
+
+            return mine switch
+            {
+                'X' => 'A',
+                'Y' => 'B',
+                'Z' => 'C',
+                _ => throw new ArgumentException(nameof(mine)),
+            };
+        }
+
         public const string Clues = """
             C Z
             C Y
@@ -2507,16 +2543,5 @@ namespace Day2
             A Z
             B Y
             """;
-
-        public static IEnumerable<(char Theirs, char Mine)> GetClueRounds()
-        {
-            var rounds = Clues.Split(Environment.NewLine);
-
-            foreach (var round in rounds)
-            {
-                string[] moves = round.Split(' ');
-                yield return (moves[0][0], moves[1][0]);
-            }
-        }
     }
 }

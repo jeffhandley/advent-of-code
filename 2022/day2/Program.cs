@@ -29,9 +29,10 @@ public static class Program
         { 1, 6 }
     };
 
-    public static void Main()
+    public static void Main(string[] args)
     {
-        var rounds = InputData.GetClueRounds();
+        bool cipherKnown = (args.Length > 0);
+        var rounds = InputData.GetClueRounds(cipherKnown);
         var judge = new ShapeComparer();
 
         int totalScore = 0;

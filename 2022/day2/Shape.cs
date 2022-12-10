@@ -6,9 +6,9 @@ public class ShapeComparer : IComparer<char>
     {
         return theirs switch
         {
-            'A' => mine == 'X' ? 0 : (mine == 'Y' ? 1 : -1),
-            'B' => mine == 'Y' ? 0 : (mine == 'Z' ? 1 : -1),
-            'C' => mine == 'Z' ? 0 : (mine == 'X' ? 1 : -1),
+            'A' => mine == 'A' ? 0 : (mine == 'B' ? 1 : -1),
+            'B' => mine == 'B' ? 0 : (mine == 'C' ? 1 : -1),
+            'C' => mine == 'C' ? 0 : (mine == 'A' ? 1 : -1),
             _ => throw new ArgumentException(nameof(theirs)),
         };
     }
