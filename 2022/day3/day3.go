@@ -18,15 +18,30 @@ func main() {
             char := string(shared)
             code := int(shared)
             priority := getPriority(shared)
-
             totalPriority += priority
 
             fmt.Printf("    - %s (%d) = %d\n", char, code, priority)
         }
     }
 
+    fmt.Println("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
+
+    numSacks := len(rucksacks)
+    totalBadgePriority := 0
+
+    for i := 0; i + 2 < numSacks; i += 3 {
+        badge := findBadge(rucksacks[i], rucksacks[i + 1], rucksacks[i + 2])
+        char := string(badge)
+        code := int(badge)
+        badgePriority := getPriority(badge)
+        totalBadgePriority += badgePriority
+
+        fmt.Printf("Group %d: %s (%d) = (%d)\n", (i / 3) + 1, char, code, badgePriority)
+    }
+
     fmt.Println()
-    fmt.Println("Total Priority:", totalPriority)
+    fmt.Println("Total Priority (Part One):", totalPriority)
+    fmt.Println("Total Badge Priority (Part Two):", totalBadgePriority)
 }
 
 type Arrangement struct {
@@ -71,4 +86,14 @@ func getArrangements(rucksacks []string) []Arrangement {
     }
 
     return arrangements
+}
+
+func findBadge(elf1, elf2, elf3 string) rune {
+    for _, itemtype := range elf1 {
+        if strings.IndexRune(elf2, itemtype) >= 0 && strings.IndexRune(elf3, itemtype) >= 0 {
+            return itemtype
+        }
+    }
+
+    return rune(0)
 }
