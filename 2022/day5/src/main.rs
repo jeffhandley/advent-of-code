@@ -11,16 +11,21 @@ fn main() -> io::Result<()> {
     let cargo: (HashMap<usize, Vec<char>>, Vec<&str>) = parse_data(&data)?;
 
     let rearranged = process_instructions(cargo.0, cargo.1);
+    print_stacks(&rearranged);
 
-    // let mut top_crates = String::new();
-    // for stack in rearranged {
-    //     let top = stack.to_vec().pop().expect("Stack is empty");
-    //     top_crates.push(top);
-    // }
+    let mut top_crates = String::new();
 
-    // println!("Top Crates: {top_crates}");
+    let mut cols: Vec<usize> = rearranged.keys().copied().collect();
+    cols.sort_unstable();
 
-    print_stacks(rearranged);
+    for col in cols {
+        let stack: Vec<char> = rearranged.get(&col).expect("Should have this key").to_vec();
+        let top_crate: &char = stack.last().unwrap_or(&' ');
+
+        top_crates.push(*top_crate);
+    }
+
+    println!("Top Crates: {top_crates}");
 
     Ok(())
 }
@@ -143,7 +148,7 @@ fn process_instructions(cargo: HashMap<usize, Vec<char>>, instructions: Vec<&str
     stacks
 }
 
-fn print_stacks(cargo: HashMap<usize, Vec<char>>) {
+fn print_stacks(cargo: &HashMap<usize, Vec<char>>) {
     let mut cols: Vec<usize> = cargo.keys().copied().collect();
     cols.sort_unstable();
 
