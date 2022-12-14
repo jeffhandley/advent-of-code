@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::io;
 use std::io::prelude::*;
 use std::fs::File;
@@ -7,7 +8,7 @@ fn main() -> io::Result<()> {
     let mut data = String::new();
 
     f.read_to_string(&mut data)?;
-    let cargo: (Vec<Vec<char>>, Vec<&str>) = parse_data(&data)?;
+    let cargo: (HashMap<usize, Vec<char>>, Vec<&str>) = parse_data(&data)?;
 
     let rearranged = process_instructions(cargo.0, cargo.1);
 
@@ -24,7 +25,7 @@ fn main() -> io::Result<()> {
     Ok(())
 }
 
-fn parse_data(data: &str) -> io::Result<(Vec<Vec<char>>, Vec<&str>)> {
+fn parse_data(data: &str) -> io::Result<(HashMap<usize, Vec<char>>, Vec<&str>)> {
     let lines: Vec<&str> = data.lines().collect();
     println!("Lines of input data: {}", lines.len());
 
@@ -66,11 +67,11 @@ fn parse_data(data: &str) -> io::Result<(Vec<Vec<char>>, Vec<&str>)> {
     Ok((crate_stacks, instructions))
 }
 
-fn parse_crates(mut crates: Vec<&str>) -> Vec<Vec<char>> {
+fn parse_crates(mut crates: Vec<&str>) -> HashMap<usize, Vec<char>> {
     // Turn the crate stacks upside down to get the bottom row first
     crates.reverse();
 
-    let mut stacks: Vec<Vec<char>> = Vec::new();
+    let mut stacks: HashMap<usize, Vec<char>> = HashMap::new();
 
     for row in crates {
         let mut columns: Vec<char> = row.chars().collect();
@@ -86,17 +87,14 @@ fn parse_crates(mut crates: Vec<&str>) -> Vec<Vec<char>> {
                 columns.pop();
             }
 
-            let mut stack: Vec<char> = stacks.get_mut(col).unwrap_or(&mut Vec::<char>::new()).to_vec();
+            let mut stack: Vec<char> = stacks.get(&col).unwrap_or(&Vec::<char>::new()).to_vec();
 
             if String::from(item).trim().len() > 0 {
                 stack.push(item);
                 println!("Added {} to stack {}. New size: {}.", item, col, stack.len());
             }
 
-            if stacks.len() == col {
-                stacks.push(stack)
-            }
-
+            stacks.insert(col, stack);
             col += 1;
         }
     }
@@ -104,17 +102,17 @@ fn parse_crates(mut crates: Vec<&str>) -> Vec<Vec<char>> {
     stacks
 }
 
-fn process_instructions(cargo: Vec<Vec<char>>, instructions: Vec<&str>) -> Vec<Vec<char>> {
-    let mut stacks: Vec<Vec<char>> = Vec::new();
+fn process_instructions(cargo: HashMap<usize, Vec<char>>, instructions: Vec<&str>) -> HashMap<usize, Vec<char>> {
+    let mut stacks: HashMap<usize, Vec<char>> = HashMap::new();
 
-    for stack in cargo {
+    for (col, stack) in cargo {
         let mut crates: Vec<char> = Vec::new();
 
         for item in stack {
             crates.push(item);
         }
 
-        stacks.push(crates);
+        stacks.insert(col, crates);
     }
 
     for inst in instructions {
@@ -145,11 +143,17 @@ fn process_instructions(cargo: Vec<Vec<char>>, instructions: Vec<&str>) -> Vec<V
     stacks
 }
 
-fn print_stacks(cargo: Vec<Vec<char>>) {
-    for stack in cargo {
-        for item in stack {
+fn print_stacks(cargo: HashMap<usize, Vec<char>>) {
+    let mut cols: Vec<usize> = cargo.keys().copied().collect();
+    cols.sort_unstable();
+
+    for col in cols {
+        print!("{col}: ");
+
+        for item in cargo.get(&col).expect("Should have this key") {
             print!("[{item}] ");
         }
+
         println!();
     }
 }
