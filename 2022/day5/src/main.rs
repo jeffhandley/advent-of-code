@@ -9,9 +9,15 @@ fn main() -> io::Result<()> {
     f.read_to_string(&mut data)?;
     let cargo: (Vec<Vec<char>>, Vec<&str>) = parse_data(&data)?;
 
-    for inst in &cargo.1 {
-        println!("{}", inst);
+    let rearranged = process_instructions(cargo.0, cargo.1);
+
+    let mut top_crates = String::new();
+    for stack in rearranged {
+        let top = stack.to_vec().pop().expect("Stack is empty");
+        top_crates.push(top);
     }
+
+    println!("Top Crates: {top_crates}");
 
     Ok(())
 }
@@ -90,6 +96,47 @@ fn parse_crates(mut crates: Vec<&str>) -> Vec<Vec<char>> {
             }
 
             col += 1;
+        }
+    }
+
+    stacks
+}
+
+fn process_instructions(cargo: Vec<Vec<char>>, instructions: Vec<&str>) -> Vec<Vec<char>> {
+    let mut stacks: Vec<Vec<char>> = Vec::new();
+
+    for stack in cargo {
+        let mut crates: Vec<char> = Vec::new();
+
+        for item in stack {
+            crates.push(item);
+        }
+
+        stacks.push(crates);
+    }
+
+    for inst in instructions {
+        let mut parts = inst.split_ascii_whitespace();
+        parts.next(); // move
+        let mut count: u8 = parts.next().unwrap_or("0").parse().unwrap_or(0);
+        parts.next(); // from
+        let old: usize = parts.next().unwrap_or("0").parse().unwrap_or(0);
+        parts.next(); // to
+        let new: usize = parts.next().unwrap_or("0").parse().unwrap_or(0);
+
+        if count > 0 && old > 0 && new > 0 {
+            println!("Moving {count} from {old} to {new}");
+
+            while count > 0 {
+                // Stacks are 1-based in the data
+                let mut old_stack = stacks.get(old - 1).expect("Could not get old stack").to_vec();
+                let mut new_stack = stacks.get(new - 1).expect("Could not get new stack").to_vec();
+
+                let item = old_stack.pop().expect("No crates left in stack");
+                new_stack.push(item);
+
+                count -= 1;
+            }
         }
     }
 
