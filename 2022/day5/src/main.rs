@@ -9,8 +9,11 @@ fn main() -> io::Result<()> {
 
     f.read_to_string(&mut data)?;
     let cargo: (HashMap<usize, Vec<char>>, Vec<&str>) = parse_data(&data)?;
+    let original = cargo.0;
+    let instructions = cargo.1;
+    print_stacks(&original);
 
-    let rearranged = process_instructions(cargo.0, cargo.1);
+    let rearranged = process_instructions(original, instructions);
     print_stacks(&rearranged);
 
     let mut top_crates = String::new();
