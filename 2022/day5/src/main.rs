@@ -11,26 +11,34 @@ fn main() -> io::Result<()> {
     let cargo: (HashMap<usize, Vec<char>>, Vec<&str>) = parse_data(&data)?;
     let original = cargo.0;
     let instructions = cargo.1;
+
     print_stacks(&original);
-
-    let rearranged = process_instructions(original, instructions);
+    let rearranged = process_instructions(&original, &instructions, false);
     print_stacks(&rearranged);
+    println!("Top Crates (Part One): {}", top_crates(&rearranged));
 
+    print_stacks(&original);
+    let rearranged = process_instructions(&original, &instructions, true);
+    print_stacks(&rearranged);
+    println!("Top Crates (Part Two): {}", top_crates(&rearranged));
+
+    Ok(())
+}
+
+fn top_crates(crates: &HashMap<usize, Vec<char>>) -> String {
     let mut top_crates = String::new();
 
-    let mut cols: Vec<usize> = rearranged.keys().copied().collect();
+    let mut cols: Vec<usize> = crates.keys().copied().collect();
     cols.sort_unstable();
 
     for col in cols {
-        let stack: Vec<char> = rearranged.get(&col).expect("Should have this key").to_vec();
+        let stack: Vec<char> = crates.get(&col).expect("Should have this key").to_vec();
         let top_crate: &char = stack.last().unwrap_or(&' ');
 
         top_crates.push(*top_crate);
     }
 
-    println!("Top Crates: {top_crates}");
-
-    Ok(())
+    top_crates
 }
 
 fn parse_data(data: &str) -> io::Result<(HashMap<usize, Vec<char>>, Vec<&str>)> {
@@ -102,7 +110,7 @@ fn parse_crates(mut crates: Vec<&str>) -> HashMap<usize, Vec<char>> {
                 // println!("Added {} to stack {}. New size: {}.", item, col, stack.len());
 
                 stacks.insert(col, stack);
-                // print_stacks(&stacks);
+                print_stacks(&stacks);
             }
 
             col += 1;
@@ -112,23 +120,25 @@ fn parse_crates(mut crates: Vec<&str>) -> HashMap<usize, Vec<char>> {
     stacks
 }
 
-fn process_instructions(cargo: HashMap<usize, Vec<char>>, instructions: Vec<&str>) -> HashMap<usize, Vec<char>> {
+fn process_instructions(cargo: &HashMap<usize, Vec<char>>, instructions: &Vec<&str>, move_multi: bool) -> HashMap<usize, Vec<char>> {
     let mut stacks: HashMap<usize, Vec<char>> = HashMap::new();
 
     for (col, stack) in cargo {
         let mut crates: Vec<char> = Vec::new();
 
         for item in stack {
-            crates.push(item);
+            crates.push(*item);
         }
 
-        stacks.insert(col, crates);
+        stacks.insert(*col, crates);
     }
+
+    // let stdin = io::stdin();
 
     for inst in instructions {
         let mut parts = inst.split_ascii_whitespace();
         parts.next(); // move
-        let mut count: u8 = parts.next().unwrap_or("0").parse().unwrap_or(0);
+        let count: u8 = parts.next().unwrap_or("0").parse().unwrap_or(0);
         parts.next(); // from
         let old: usize = parts.next().unwrap_or("0").parse().unwrap_or(0);
         parts.next(); // to
@@ -137,21 +147,26 @@ fn process_instructions(cargo: HashMap<usize, Vec<char>>, instructions: Vec<&str
         if count > 0 && old > 0 && new > 0 {
             // println!("Moving {count} from {old} to {new}");
 
-            while count > 0 {
-                // Stacks are 1-based in the data
-                let mut old_stack = stacks.get(&(old - 1)).expect("Could not get old stack").to_vec();
-                let mut new_stack = stacks.get(&(new - 1)).expect("Could not get new stack").to_vec();
+            // Stacks are 1-based in the data
+            let mut old_stack = stacks.get(&(old - 1)).expect("Could not get old stack").to_vec();
+            let mut new_stack = stacks.get(&(new - 1)).expect("Could not get new stack").to_vec();
 
-                let item = old_stack.pop().expect("No crates left in stack");
-                new_stack.push(item);
+            let start = old_stack.len() - usize::from(count);
+            let mut items = old_stack.drain(start..).as_slice().to_vec();
 
-                stacks.insert(old - 1, old_stack);
-                stacks.insert(new - 1, new_stack);
-
-                count -= 1;
+            if !move_multi {
+                items.reverse();
             }
 
+            new_stack.append(&mut items);
+
+            stacks.insert(old - 1, old_stack);
+            stacks.insert(new - 1, new_stack);
+
             // print_stacks(&stacks);
+
+            // let mut input = String::new();
+            // stdin.read_line(&mut input).ok();
         }
     }
 
