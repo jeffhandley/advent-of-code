@@ -11,13 +11,15 @@ fn main() -> io::Result<()> {
 
     let rearranged = process_instructions(cargo.0, cargo.1);
 
-    let mut top_crates = String::new();
-    for stack in rearranged {
-        let top = stack.to_vec().pop().expect("Stack is empty");
-        top_crates.push(top);
-    }
+    // let mut top_crates = String::new();
+    // for stack in rearranged {
+    //     let top = stack.to_vec().pop().expect("Stack is empty");
+    //     top_crates.push(top);
+    // }
 
-    println!("Top Crates: {top_crates}");
+    // println!("Top Crates: {top_crates}");
+
+    print_stacks(rearranged);
 
     Ok(())
 }
@@ -141,4 +143,13 @@ fn process_instructions(cargo: Vec<Vec<char>>, instructions: Vec<&str>) -> Vec<V
     }
 
     stacks
+}
+
+fn print_stacks(cargo: Vec<Vec<char>>) {
+    for stack in cargo {
+        for item in stack {
+            print!("[{item}] ");
+        }
+        println!();
+    }
 }
