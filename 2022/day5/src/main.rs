@@ -86,11 +86,11 @@ fn parse_crates(mut crates: Vec<&str>) -> Vec<Vec<char>> {
                 columns.pop();
             }
 
-            let mut stack: Vec<char> = stacks.get(col).unwrap_or(&Vec::<char>::new()).to_vec();
+            let mut stack: Vec<char> = stacks.get_mut(col).unwrap_or(&mut Vec::<char>::new()).to_vec();
 
             if String::from(item).trim().len() > 0 {
-                println!("Adding {} to stack {}", item, col);
                 stack.push(item);
+                println!("Added {} to stack {}. New size: {}.", item, col, stack.len());
             }
 
             if stacks.len() == col {
@@ -131,11 +131,11 @@ fn process_instructions(cargo: Vec<Vec<char>>, instructions: Vec<&str>) -> Vec<V
 
             while count > 0 {
                 // Stacks are 1-based in the data
-                let mut old_stack = stacks.get(old - 1).expect("Could not get old stack").to_vec();
-                let mut new_stack = stacks.get(new - 1).expect("Could not get new stack").to_vec();
+                // let mut old_stack = stacks.get(old - 1).expect("Could not get old stack").to_vec();
+                // let mut new_stack = stacks.get(new - 1).expect("Could not get new stack").to_vec();
 
-                let item = old_stack.pop().expect("No crates left in stack");
-                new_stack.push(item);
+                // let item = old_stack.pop().expect("No crates left in stack");
+                // new_stack.push(item);
 
                 count -= 1;
             }
