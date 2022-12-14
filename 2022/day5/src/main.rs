@@ -99,10 +99,12 @@ fn parse_crates(mut crates: Vec<&str>) -> HashMap<usize, Vec<char>> {
 
             if String::from(item).trim().len() > 0 {
                 stack.push(item);
-                println!("Added {} to stack {}. New size: {}.", item, col, stack.len());
+                // println!("Added {} to stack {}. New size: {}.", item, col, stack.len());
+
+                stacks.insert(col, stack);
+                // print_stacks(&stacks);
             }
 
-            stacks.insert(col, stack);
             col += 1;
         }
     }
@@ -133,18 +135,23 @@ fn process_instructions(cargo: HashMap<usize, Vec<char>>, instructions: Vec<&str
         let new: usize = parts.next().unwrap_or("0").parse().unwrap_or(0);
 
         if count > 0 && old > 0 && new > 0 {
-            println!("Moving {count} from {old} to {new}");
+            // println!("Moving {count} from {old} to {new}");
 
             while count > 0 {
                 // Stacks are 1-based in the data
-                // let mut old_stack = stacks.get(old - 1).expect("Could not get old stack").to_vec();
-                // let mut new_stack = stacks.get(new - 1).expect("Could not get new stack").to_vec();
+                let mut old_stack = stacks.get(&(old - 1)).expect("Could not get old stack").to_vec();
+                let mut new_stack = stacks.get(&(new - 1)).expect("Could not get new stack").to_vec();
 
-                // let item = old_stack.pop().expect("No crates left in stack");
-                // new_stack.push(item);
+                let item = old_stack.pop().expect("No crates left in stack");
+                new_stack.push(item);
+
+                stacks.insert(old - 1, old_stack);
+                stacks.insert(new - 1, new_stack);
 
                 count -= 1;
             }
+
+            // print_stacks(&stacks);
         }
     }
 
@@ -155,13 +162,34 @@ fn print_stacks(cargo: &HashMap<usize, Vec<char>>) {
     let mut cols: Vec<usize> = cargo.keys().copied().collect();
     cols.sort_unstable();
 
-    for col in cols {
-        print!("{col}: ");
+    let mut height: usize = 0;
+    let width: usize = cargo.keys().len();
 
-        for item in cargo.get(&col).expect("Should have this key") {
-            print!("[{item}] ");
+    for (_, stack) in cargo {
+        let this_height = stack.len();
+
+        if height < this_height {
+            height = this_height;
+        }
+    }
+
+    for row in (0..height).rev() {
+        for col in 0..width {
+            let item = cargo.get(&col).expect("Column expected").get(row);
+
+            if item.is_some() {
+                print!("[{}] ", item.unwrap());
+            } else {
+                print!("    ");
+            }
         }
 
         println!();
     }
+
+    for col in 0..width {
+        print!(" {}  ", col + 1);
+    }
+
+    println!();
 }
