@@ -7,11 +7,11 @@ fn main() {
     let (message_found, message_beg, message_end, message) = find_first_unique_bytes(&input_data, 14);
 
     if signal_found {
-        println!("Signal: {signal}. Position: {signal_beg}-{signal_end}.");
+        println!("Signal: {signal}. Position: ({signal_beg}..{signal_end}).");
     }
 
     if message_found {
-        println!("Message: {message}. Position: {message_beg}-{message_end}.");
+        println!("Message: {message}. Position: ({message_beg}..{message_end}).");
     }
 }
 
