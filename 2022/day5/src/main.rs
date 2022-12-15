@@ -4,7 +4,7 @@ use std::io::prelude::*;
 use std::fs::File;
 
 fn main() -> io::Result<()> {
-    let mut f = File::open("C:\\Users\\jeffhand\\git\\jeffhandley\\advent-of-code\\2022\\day5\\data\\input.txt")?;
+    let mut f = File::open(".\\data\\input.txt")?;
     let mut data = String::new();
 
     f.read_to_string(&mut data)?;
