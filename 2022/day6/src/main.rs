@@ -3,21 +3,25 @@ use std::fs::File;
 
 fn main() {
     let input_data = get_input_data();
-    let (signal_found, signal_beg, signal_end, signal) = find_first_unique_bytes(&input_data, 4);
-    let (message_found, message_beg, message_end, message) = find_first_unique_bytes(&input_data, 14);
+    let mut size: usize = 2;
+    let beg: usize = 0;
 
-    if signal_found {
-        println!("Signal: {signal}. Position: ({signal_beg}..{signal_end}).");
-    }
+    loop {
+        let (found, beg, end, seq) = find_first_unique_bytes(&input_data, size, beg);
 
-    if message_found {
-        println!("Message: {message}. Position: ({message_beg}..{message_end}).");
+        if !found {
+            break;
+        }
+
+        let range = format!("{beg}..{end}");
+        println!("Size {size:>3}: {range:>12} - {seq}");
+
+        size += 1;
     }
 }
 
-fn find_first_unique_bytes(data: &Vec<u8>, signal_width: usize) -> (bool, usize, usize, String) {
-    let mut beg = 0;
-    let mut end = signal_width;
+fn find_first_unique_bytes(data: &Vec<u8>, size: usize, mut beg: usize) -> (bool, usize, usize, String) {
+    let mut end = size;
     let mut seq: String = String::from("");
 
     let found_signal = loop {
@@ -31,7 +35,7 @@ fn find_first_unique_bytes(data: &Vec<u8>, signal_width: usize) -> (bool, usize,
             candidate.sort_unstable();
             candidate.dedup();
 
-            if candidate.len() == signal_width {
+            if candidate.len() == size {
                 seq = String::from_utf8(bytes.unwrap().to_vec()).expect("Expected UTF-8 bytes");
                 break true;
             }
