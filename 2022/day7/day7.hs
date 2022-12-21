@@ -26,29 +26,30 @@ rootDir (DirectoryListing pathParts fileEntries) = DirectoryListing [] fileEntri
 formatPath :: [String] -> String
 formatPath pathParts = '/':(intercalate "/" (reverse pathParts))
 
+formatEntries :: [(String, Int)] -> String
+formatEntries entries = intercalate "\n" (map (\(path, size) -> path ++ " : " ++ show size) entries)
+
 sizeLimit = 100000
 
 main = do
   commandLog <- readFile "input/command.log"
-  putStrLn (formatEntries (processLog commandLog))
 
-  let dirEntries = withinLimit sizeLimit (flattenAncestors (parentEntries (processLog commandLog)))
-  let sumWithinLimit = sumSizes dirEntries
-  let sorted = sortBy (\(_, size1) (_, size2) -> compare size2 size1) dirEntries
+  let (dirEntries, sumWithinLimit) = sumSizesWithinLimit (withinLimit sizeLimit (flattenAncestors (parentEntries (processLog commandLog))))
 
-  putStrLn ("\n\n" ++ (formatEntries sorted))
+  putStrLn ("\n\n" ++ (formatEntries dirEntries))
   putStrLn ("\nFolders within limit: " ++ show (length dirEntries) ++ ". Total size: " ++ show sumWithinLimit)
 
 
-formatEntries entries = intercalate "\n" (map (\(path, size) -> formatPath path ++ " : " ++ show size) entries)
+-- ancestorsOnly :: [([String], Int)] -> [([String], Int)]
+-- ancestorsOnly dirEntries = filter (\(path:parentPath, _) -> isParentmost (parentPath, dirEntries)) dirEntries
 
--- ancestors :: [([String], Int)] -> [([String], Int)]
--- ancestors dirEntries = filter (\(path:parentPath, _) -> isParentmost (parentPath, dirEntries)) dirEntries
+sumSizesWithinLimit :: [([String], Int)] -> ([(String, Int)], Int)
+sumSizesWithinLimit entries = (map (\(path, size) -> (formatPath path, size)) entries, sumSizes entries)
 
 withinLimit :: Int -> [([String], Int)] -> [([String], Int)]
 withinLimit sizeLimit = filter (\(path, size) -> size <= sizeLimit)
 
-sumSizes :: [([String], Int)] -> Int
+sumSizes :: [(path, Int)] -> Int
 sumSizes [] = 0
 sumSizes ((_, size):entries) = size + sumSizes entries
 
