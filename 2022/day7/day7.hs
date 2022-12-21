@@ -32,7 +32,7 @@ main = do
   commandLog <- readFile "input/command.log"
   putStrLn (formatEntries (processLog commandLog))
 
-  let dirEntries = ancestors (withinLimit sizeLimit (flattenAncestors (parentEntries (processLog commandLog))))
+  let dirEntries = withinLimit sizeLimit (flattenAncestors (parentEntries (processLog commandLog)))
   let sumWithinLimit = sumSizes dirEntries
   let sorted = sortBy (\(_, size1) (_, size2) -> compare size2 size1) dirEntries
 
@@ -42,8 +42,8 @@ main = do
 
 formatEntries entries = intercalate "\n" (map (\(path, size) -> formatPath path ++ " : " ++ show size) entries)
 
-ancestors :: [([String], Int)] -> [([String], Int)]
-ancestors dirEntries = filter (\(path:parentPath, _) -> isParentmost (parentPath, dirEntries)) dirEntries
+-- ancestors :: [([String], Int)] -> [([String], Int)]
+-- ancestors dirEntries = filter (\(path:parentPath, _) -> isParentmost (parentPath, dirEntries)) dirEntries
 
 withinLimit :: Int -> [([String], Int)] -> [([String], Int)]
 withinLimit sizeLimit = filter (\(path, size) -> size <= sizeLimit)
