@@ -34,10 +34,7 @@ formatEntries :: (([String], Int) -> Maybe String) -> [([String], Int)] -> Strin
 formatEntries indicator = (\entries -> intercalate "\n" (map (formatEntry indicator) entries))
 
 sortByPath :: [([String], size)] -> [([String], size)]
-sortByPath = sortBy (\(path1, _) (path2, _) -> compare (formatPath path1) (formatPath path2))
-
-sortBySizeDesc :: [(path, Int)] -> [(path, Int)]
-sortBySizeDesc = sortBy (\(_, size1) (_, size2) -> compare size2 size1)
+sortByPath = sortBy (compare `on` (\(path, _) -> formatPath path))
 
 main = do
   commandLog <- readFile "input/command.log"
@@ -51,7 +48,7 @@ main = do
   --           Sort the directories by path for sake of display
   let sizeLimit = 100000
   let withinLimit = (\(_, size) -> size <= sizeLimit)
-  let indicateWithinLimit = (\entry -> if withinLimit entry then Just " (small enough)" else Nothing)
+  let indicateWithinLimit = (\entry -> if withinLimit entry then Just " ** SMALL ENOUGH **" else Nothing)
 
   let (sumWithinLimit, dirsWithinLimit) = accumulateSizes (filter withinLimit dirEntries)
 
@@ -68,10 +65,10 @@ main = do
   let diskCapacity = 70000000
   let spaceNeeded  = 30000000
 
-  let totalSizeUsed = maybe 0 (\(_, size) -> size) (find (\(path, size) -> length path == 0) dirEntries)
+  let totalSizeUsed = maybe 0 snd (find (\(path, size) -> length path == 0) dirEntries)
   let (freeSpace, spaceToFree) = (diskCapacity - totalSizeUsed, spaceNeeded - freeSpace)
   let bigEnough = (\(_, size) -> size >= spaceToFree)
-  let indicateBigEnough = (\entry -> if bigEnough entry then Just " (big enough)" else Nothing)
+  let indicateBigEnough = (\entry -> if bigEnough entry then Just " ** BIG ENOUGH **" else Nothing)
 
   let (dirToDelete, spaceFreed) = findSmallest (filter bigEnough dirEntries)
 
