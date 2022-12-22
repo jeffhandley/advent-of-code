@@ -29,15 +29,18 @@ formatPath pathParts = '/':(intercalate "/" (reverse pathParts))
 sizeLimit = 100000
 
 main = do
-  inputData <- readFile "input/command.log"
-  let dirEntries = ancestors (withinLimit sizeLimit (flattenAncestors (parentEntries (processLog inputData))))
+  commandLog <- readFile "input/command.log"
+  putStrLn (formatEntries (processLog commandLog))
+
+  let dirEntries = ancestors (withinLimit sizeLimit (flattenAncestors (parentEntries (processLog commandLog))))
   let sumWithinLimit = sumSizes dirEntries
-
   let sorted = sortBy (\(_, size1) (_, size2) -> compare size2 size1) dirEntries
-  let formatted = map (\(path, size) -> formatPath path ++ " : " ++ show size) sorted
 
-  putStrLn (intercalate "\n" formatted)
+  putStrLn ("\n\n" ++ (formatEntries sorted))
   putStrLn ("\nFolders within limit: " ++ show (length dirEntries) ++ ". Total size: " ++ show sumWithinLimit)
+
+
+formatEntries entries = intercalate "\n" (map (\(path, size) -> formatPath path ++ " : " ++ show size) entries)
 
 ancestors :: [([String], Int)] -> [([String], Int)]
 ancestors dirEntries = filter (\(path:parentPath, _) -> isParentmost (parentPath, dirEntries)) dirEntries
