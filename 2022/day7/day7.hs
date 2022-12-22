@@ -8,33 +8,6 @@ import Data.Map (fromListWith, toList)
 import Data.Maybe (fromMaybe)
 import System.Environment (getArgs)
 
-data DirectoryListing pathParts fileEntries = DirectoryListing [String] [([String], Int)]
-dirPath (DirectoryListing pathParts fileEntries) = pathParts
-files (DirectoryListing pathParts fileEntries) = fileEntries
-addFile ((DirectoryListing pathParts fileEntries), filename, size) =
-  DirectoryListing pathParts ((filename:pathParts, size):fileEntries)
-
-parentDir :: (DirectoryListing [String] [String]) -> (DirectoryListing [String] [String])
-parentDir (DirectoryListing (_:parent) fileEntries) = DirectoryListing parent fileEntries
-
-childDir :: (DirectoryListing [String] [String], String) -> (DirectoryListing [String] [String])
-childDir (DirectoryListing parent fileEntries, path) = DirectoryListing (path:parent) fileEntries
-
-rootDir :: (DirectoryListing [String] [String]) -> (DirectoryListing [String] [String])
-rootDir (DirectoryListing pathParts fileEntries) = DirectoryListing [] fileEntries
-
-formatPath :: [String] -> String
-formatPath pathParts = '/':(intercalate "/" (reverse pathParts))
-
-formatEntry :: (([String], Int) -> Maybe String) -> ([String], Int) -> String
-formatEntry indicator = (\(path, size) -> formatPath path ++ " : " ++ show size ++ fromMaybe "" (indicator (path, size)))
-
-formatEntries :: (([String], Int) -> Maybe String) -> [([String], Int)] -> String
-formatEntries indicator = (\entries -> intercalate "\n" (map (formatEntry indicator) entries))
-
-sortByPath :: [([String], size)] -> [([String], size)]
-sortByPath = sortBy (compare `on` (\(path, _) -> formatPath path))
-
 main = do
   -- https://adventofcode.com/2022/day/7/input
   commandLog <- readFile "input.log"
@@ -43,9 +16,9 @@ main = do
   -- Flatten the ancestors to produce a full (flattened) tree of directories and sizes
   let dirEntries = flattenAncestors (parentEntries (processLog commandLog))
 
-  -- Part One: Find directories with accumulated sizes under the size limit.
-  --           Sum up those directories' accumulated sizes (without de-duping the sizes) for the answer.
-  --           Sort the directories by path for sake of display
+  {- Part One: Find directories with accumulated sizes under the size limit.
+               Sum up those directories' accumulated sizes (without de-duping the sizes) for the answer.
+               Sort the directories by path for sake of display. -}
   let sizeLimit = 100000
   let withinLimit = (\(_, size) -> size <= sizeLimit)
   let indicateWithinLimit = (\entry -> if withinLimit entry then Just " ** SMALL ENOUGH **" else Nothing)
@@ -58,10 +31,10 @@ main = do
   putStrLn ("Number of directories within limit:     " ++ show (length dirsWithinLimit))
   putStrLn ("Total size of directories within limit: " ++ show sumWithinLimit ++ " [PART ONE ANSWER]")
 
-  -- Part Two: Find directories with accumulated sizes above the space needed to free up.
-  --           Then identify the smallest directory that can be deleted to free up enough space.
-  --           To prepare, we first need to calculate how much disk space is used and how
-  --           much space needs to be freed up. We do that by finding the root directory's size.
+  {- Part Two: Find directories with accumulated sizes above the space needed to free up.
+               Then identify the smallest directory that can be deleted to free up enough space.
+               To prepare, we first need to calculate how much disk space is used and how
+               much space needs to be freed up. We do that by finding the root directory's size. -}
   let diskCapacity = 70000000
   let spaceNeeded  = 30000000
 
@@ -86,28 +59,11 @@ main = do
   putStrLn ("Space to be Freed   : " ++ show spaceFreed ++ " [PART TWO ANSWER]")
 
 
-findSmallest :: [(path, Int)] -> (path, Int)
-findSmallest = minimumBy (compare `on` snd)
-
-accumulateSizes :: [(path, Int)] -> (Int, [(path, Int)])
-accumulateSizes = mapAccumL (\acc (path, size) -> (acc + size, (path, size))) 0
-
-isDescendent :: ([String], Int) -> Bool
-isDescendent entry = length (fst entry) > 0
-
-entriesWithAncestors :: [([String], Int)] -> [([String], Int)]
-entriesWithAncestors = filter isDescendent
-
-parentEntry :: ([String], Int) -> ([String], Int)
-parentEntry (path:parent, size) = (parent, size)
-
-parentEntries :: [([String], Int)] -> [([String], Int)]
-parentEntries fileEntries = map parentEntry (entriesWithAncestors fileEntries)
-
-flattenAncestors :: [([String], Int)] -> [([String], Int)]
-flattenAncestors [] = []
-flattenAncestors fileList = toList(fromListWith (+) (fileList ++ flattenAncestors (parentEntries fileList)))
-
+{- Process the command log to extract the directory listing of the file system
+   revealed by the log. The log contains commands (`cd /`, `cd ..`, `cd {dir}`, and `ls`).
+   The output of the `ls` command includes `dir {dir}` lines (which we can ignore) and
+   `{size} {file}` lines that provide file/size data for the current directory. That data
+   is used to construct full list of files that exist across the file system. -}
 processLog :: String -> [([String], Int)]
 processLog commandLog = parseCommandLines (DirectoryListing [] [], lines commandLog)
 
@@ -130,3 +86,70 @@ parseDirListing (listing, logLines) = parseDirListing (parseEntry (listing, word
 parseEntry :: (DirectoryListing pathParts fileEntries, [String]) -> DirectoryListing pathParts fileEntries
 parseEntry (listing, (sizeOrDir:filename:[])) | sizeOrDir == "dir" = listing
 parseEntry (listing, (sizeOrDir:filename:[])) = addFile (listing, filename, read sizeOrDir)
+
+{- State management of the DirectoryListing, including the current directory, and all files
+   * rootDir, parentDir, and childDir for changing the current directory
+   * addFile for adding a file entry at the current directory
+-}
+data DirectoryListing pathParts fileEntries = DirectoryListing [String] [([String], Int)]
+dirPath (DirectoryListing pathParts fileEntries) = pathParts
+files (DirectoryListing pathParts fileEntries) = fileEntries
+addFile ((DirectoryListing pathParts fileEntries), filename, size) =
+  DirectoryListing pathParts ((filename:pathParts, size):fileEntries)
+
+rootDir :: (DirectoryListing [String] [String]) -> (DirectoryListing [String] [String])
+rootDir (DirectoryListing pathParts fileEntries) = DirectoryListing [] fileEntries
+
+parentDir :: (DirectoryListing [String] [String]) -> (DirectoryListing [String] [String])
+parentDir (DirectoryListing (_:parent) fileEntries) = DirectoryListing parent fileEntries
+
+childDir :: (DirectoryListing [String] [String], String) -> (DirectoryListing [String] [String])
+childDir (DirectoryListing parent fileEntries, path) = DirectoryListing (path:parent) fileEntries
+
+{- Logic for processing the file entries to produce entries
+   for all ancestor directories, accumulating the total size
+   of all file entries contained within each directory. -}
+entriesWithAncestors :: [([String], Int)] -> [([String], Int)]
+entriesWithAncestors = filter isDescendent
+
+isDescendent :: ([String], Int) -> Bool
+isDescendent entry = length (fst entry) > 0
+
+parentEntry :: ([String], Int) -> ([String], Int)
+parentEntry (path:parent, size) = (parent, size)
+
+parentEntries :: [([String], Int)] -> [([String], Int)]
+parentEntries fileEntries = map parentEntry (entriesWithAncestors fileEntries)
+
+flattenAncestors :: [([String], Int)] -> [([String], Int)]
+flattenAncestors [] = []
+flattenAncestors fileList = toList(fromListWith (+) (fileList ++ flattenAncestors (parentEntries fileList)))
+
+{- Business logic for processing the flattened list of entries. -}
+
+-- Given a list of entries, calculate the total size of those entries.
+-- Return both the total size and the entries.
+accumulateSizes :: [(path, Int)] -> (Int, [(path, Int)])
+accumulateSizes = mapAccumL (\acc (path, size) -> (acc + size, (path, size))) 0
+
+-- Given a list of entries, find the entry with the smallest total size.
+findSmallest :: [(path, Int)] -> (path, Int)
+findSmallest = minimumBy (compare `on` snd)
+
+{- Functions for printing entries to the console in readable formats. -}
+
+-- Format path parts into a path string
+formatPath :: [String] -> String
+formatPath pathParts = '/':(intercalate "/" (reverse pathParts))
+
+-- Format an entry into its path string, size, and an optional indicator suffix
+formatEntry :: (([String], Int) -> Maybe String) -> ([String], Int) -> String
+formatEntry indicator = (\(path, size) -> formatPath path ++ " : " ++ show size ++ fromMaybe "" (indicator (path, size)))
+
+-- Format a list of entries into a single string with one entry per line
+formatEntries :: (([String], Int) -> Maybe String) -> [([String], Int)] -> String
+formatEntries indicator = (\entries -> intercalate "\n" (map (formatEntry indicator) entries))
+
+-- Sort a list of entries by the formatted path, which groups sub-directories under ancestors
+sortByPath :: [([String], size)] -> [([String], size)]
+sortByPath = sortBy (compare `on` (\(path, _) -> formatPath path))
