@@ -24,7 +24,6 @@ rootDir :: (DirectoryListing [String] [String]) -> (DirectoryListing [String] [S
 rootDir (DirectoryListing pathParts fileEntries) =
   DirectoryListing [] fileEntries
 
--- main :: IO ()
 main = do
   args <- getArgs
   inputData <- getLog args
@@ -32,8 +31,10 @@ main = do
   let fileEntries = []
   let (listing,_) = parseLog (DirectoryListing pathParts fileEntries, lines inputData)
 
-  let first = length (files listing)
-  putStrLn (show first)
+  let firstFile = last (files listing)
+  let lastFile = head (files listing)
+  putStrLn (show (filePath firstFile) ++ " has " ++ show (fileSize firstFile))
+  putStrLn (show (filePath lastFile) ++ " has " ++ show (fileSize lastFile))
 
 debug (listing, logLines, message) = trace (show (length logLines) ++ " with " ++ show (length (files listing)) ++ " in " ++ show (dirPath listing) ++ " : " ++ message)
 
@@ -41,17 +42,8 @@ getLog [filename] = readFile filename
 getLog ["--", filename] = readFile filename
 getLog _ = pure ""
 
--- parseLog :: (DirectoryListing [String] [String], [String]) ->
---   (DirectoryListing [String] [String], [String])
-
--- parseCommand :: (DirectoryListing [String] [String], [Char], [String]) ->
---   (DirectoryListing [String] [String], [String])
-
--- parseDirListing :: (DirectoryListing pathParts fileEntries, [String]) ->
---   (DirectoryListing pathParts fileEntries, [String])
-
--- parseEntry :: (DirectoryListing pathParts fileEntries, [Char]) ->
---   DirectoryListing pathParts fileEntries
+parseLog :: (DirectoryListing [String] [String], [String]) ->
+  (DirectoryListing [String] [String], [String])
 
 parseLog (listing, ('$':' ':command) : logLines) = do
   let (nextListing, remainingLogLines) = debug (listing, logLines, "[parseLog:]") (parseCommand (listing, command, logLines))
@@ -64,6 +56,9 @@ parseLog (listing, []) =
 parseLog (listing, line : logLines) =
   debug (listing, logLines, "[parseLog] Unrecognized line: " ++ line) $
   parseLog (listing, logLines)
+
+parseCommand :: (DirectoryListing [String] [String], [Char], [String]) ->
+  (DirectoryListing [String] [String], [String])
 
 parseCommand (listing, ('c':'d':' ':'.':'.':[]), logLines) =
   debug (listing, logLines, "  [parseCommand] cd ..") $
@@ -85,13 +80,16 @@ parseCommand (listing, cmd, logLines) =
   debug (listing, logLines, "  [parseCommand] Unrecognized command: " ++ cmd) $
   (listing, logLines)
 
-parseDirListing (listing, line:[]) =
-  debug (listing, [], "    [parseDirListing] " ++ line) $
-  (listing, [])
+parseDirListing :: (DirectoryListing pathParts fileEntries, [String]) ->
+  (DirectoryListing pathParts fileEntries, [String])
 
-parseDirListing (listing, line:remainingLogLines) =
+parseDirListing (listing, []) = (listing, [])
+parseDirListing (listing, logLines) = do
+  let line = head logLines
+  let remainingLogLines = tail logLines
+
   case line of
-    ('$':_) -> (listing, (line:remainingLogLines))
+    ('$':_) -> (listing, logLines)
     _ -> do
       let newListing = debug (listing, remainingLogLines, "    [parseDirListing] " ++ line) $ parseEntry (listing, line)
       parseDirListing (newListing, remainingLogLines)
@@ -99,9 +97,13 @@ parseDirListing (listing, line:remainingLogLines) =
 parseSize :: [Char] -> Int
 parseSize size = read size
 
+parseEntry :: (DirectoryListing pathParts fileEntries, [Char]) ->
+  DirectoryListing pathParts fileEntries
+
 parseEntry (listing, ('d':'i':'r':' ':_)) = listing
 parseEntry (listing, entry) = case break (== ' ') entry of
   (size, _ : filename) -> do
     let file = FileEntry (filename:(dirPath listing)) (parseSize size)
-    DirectoryListing (dirPath listing) (file:(files listing))
+    trace (show (filePath file) ++ " : " ++ show (fileSize file)) $
+      DirectoryListing (dirPath listing) (file:(files listing))
   _ -> listing
