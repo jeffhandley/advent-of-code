@@ -77,13 +77,13 @@ main = do
   putStrLn (formatEntries indicateBigEnough (sortByPath dirEntries))
   putStrLn ("")
   putStrLn ("Total Disk Capacity : " ++ show diskCapacity)
+  putStrLn ("Space Needed        : " ++ show spaceNeeded)
   putStrLn ("Total Space Used    : " ++ show totalSizeUsed)
   putStrLn ("Total Space Free    : " ++ show freeSpace)
-  putStrLn ("Space Needed        : " ++ show spaceNeeded)
   putStrLn ("Space to Free       : " ++ show spaceToFree)
   putStrLn ("")
   putStrLn ("Directory to delete : " ++ formatPath dirToDelete)
-  putStrLn ("Size to be Freed    : " ++ show spaceFreed ++ " [PART TWO ANSWER]")
+  putStrLn ("Space to be Freed   : " ++ show spaceFreed ++ " [PART TWO ANSWER]")
 
 
 findSmallest :: [(path, Int)] -> (path, Int)
@@ -93,7 +93,7 @@ accumulateSizes :: [(path, Int)] -> (Int, [(path, Int)])
 accumulateSizes = mapAccumL (\acc (path, size) -> (acc + size, (path, size))) 0
 
 isDescendent :: ([String], Int) -> Bool
-isDescendent (path, _) = length path > 0
+isDescendent entry = length (fst entry) > 0
 
 entriesWithAncestors :: [([String], Int)] -> [([String], Int)]
 entriesWithAncestors = filter isDescendent
@@ -116,8 +116,8 @@ parseCommandLines (listing, []) = files listing
 parseCommandLines (listing, ('$':' ':command) : logLines) = parseCommandLines (parseCommand (listing, command, logLines))
 
 parseCommand :: (DirectoryListing [String] [String], [Char], [String]) -> (DirectoryListing [String] [String], [String])
-parseCommand (listing, ('c':'d':' ':'.':'.':[]), logLines) = (parentDir listing, logLines)
-parseCommand (listing, ('c':'d':' ':'/':[]), logLines) = (rootDir listing, logLines)
+parseCommand (listing, ('c':'d':' ':child), logLines) | child == ".." = (parentDir listing, logLines)
+parseCommand (listing, ('c':'d':' ':child), logLines) | child == "/" = (rootDir listing, logLines)
 parseCommand (listing, ('c':'d':' ':child), logLines) = (childDir (listing, child), logLines)
 parseCommand (listing, "ls", logLines) = parseDirListing (listing, logLines)
 parseCommand (listing, cmd, logLines) = (listing, logLines)
@@ -128,5 +128,5 @@ parseDirListing (listing, logLines) | head (head logLines) == '$' = (listing, lo
 parseDirListing (listing, logLines) = parseDirListing (parseEntry (listing, words (head logLines)), tail logLines)
 
 parseEntry :: (DirectoryListing pathParts fileEntries, [String]) -> DirectoryListing pathParts fileEntries
-parseEntry (listing, (size:filename:[])) | isDigit(head size) = addFile (listing, filename, read size)
-parseEntry (listing, (size:filename:[])) | size == "dir" = listing
+parseEntry (listing, (sizeOrDir:filename:[])) | sizeOrDir == "dir" = listing
+parseEntry (listing, (sizeOrDir:filename:[])) = addFile (listing, filename, read sizeOrDir)
