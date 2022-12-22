@@ -1,4 +1,24 @@
-const caloriesByElf = `8417
+(function day1(caloriesByElf) {
+    var lines = caloriesByElf.split('\n');
+
+    let elves = []; e = 0; elves[e] = [];
+    for (var line of lines) {
+        if (line && line.trim().length > 0) {
+            elves[e][elves[e].length] = parseInt(line);
+        } else {
+            elves[++e] = [];
+        }
+    }
+
+    let sums = elves.map(e => e.reduce((s, c) => s + c, 0)).sort()
+
+    var part1 = sums[sums.length-1]
+    var part2 = sums[sums.length-1]+sums[sums.length-2]+sums[sums.length-3]
+
+    console.log(`Part 1: ${part1}`);
+    console.log(`Part 2: ${part2}`);
+})(`
+8417
 8501
 5429
 2112
@@ -2228,22 +2248,5 @@ const caloriesByElf = `8417
 2668
 2525
 4886
-2965`;
-
-var lines = caloriesByElf.split('\n');
-
-let elves = []; e = 0; elves[e] = [];
-for (var line of lines) {
-    if (line && line.trim().length > 0) {
-        elves[e][elves[e].length] = parseInt(line);
-    } else {
-        elves[++e] = [];
-    }
-}
-
-let sums = elves.map(e => e.reduce((s, c) => s + c, 0)).sort()
-
-var part1 = sums[sums.length-1]
-var part2 = sums[sums.length-1]+sums[sums.length-2]+sums[sums.length-3]
-
-console.log(`part 1: ${part1}. part 2: ${part2}.`);
+2965
+`);
