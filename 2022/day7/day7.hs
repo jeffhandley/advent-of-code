@@ -1,3 +1,5 @@
+-- https://adventofcode.com/2022/day/7
+
 module Day7 where
 
 import Data.Function (on)
@@ -34,6 +36,7 @@ sortByPath :: [([String], size)] -> [([String], size)]
 sortByPath = sortBy (compare `on` (\(path, _) -> formatPath path))
 
 main = do
+  -- https://adventofcode.com/2022/day/7/input
   commandLog <- readFile "input.log"
 
   -- Process the log to build the list of directories with their total sizes
