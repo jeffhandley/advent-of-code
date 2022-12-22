@@ -1,12 +1,9 @@
 module Day7 where
 
-import Data.Char (isDigit)
-import Data.Function
-import Data.List
+import Data.Function (on)
+import Data.List (find, intercalate, mapAccumL, minimumBy, sortBy)
+import Data.Map (fromListWith, toList)
 import Data.Maybe (fromMaybe)
-import Data.Map (fromList, fromListWith, toList)
-import Debug.Trace (trace)
-import System.Directory (doesFileExist)
 import System.Environment (getArgs)
 
 data DirectoryListing pathParts fileEntries = DirectoryListing [String] [([String], Int)]
