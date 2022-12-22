@@ -1,12 +1,14 @@
 module Day7 where
 
+import Data.List
 import Debug.Trace (trace)
 import System.Directory (doesFileExist)
 import System.Environment (getArgs)
 
 data FileEntry pathParts fileSize = FileEntry [String] Int
-filePath (FileEntry pathParts fileSize) = pathParts
+filePath (FileEntry pathParts fileSize) = "/" ++ (intercalate "/" (reverse pathParts))
 fileSize (FileEntry pathParts fileSize) = fileSize
+fileDir (FileEntry pathParts fileSize) = FileEntry (tail pathParts) fileSize
 
 data DirectoryListing pathParts fileEntries = DirectoryListing [String] [FileEntry [String] Int]
 dirPath (DirectoryListing pathParts fileEntries) = pathParts
@@ -33,8 +35,11 @@ main = do
 
   let firstFile = last (files listing)
   let lastFile = head (files listing)
-  putStrLn (show (filePath firstFile) ++ " has " ++ show (fileSize firstFile))
-  putStrLn (show (filePath lastFile) ++ " has " ++ show (fileSize lastFile))
+  putStrLn (filePath firstFile ++ " has " ++ show (fileSize firstFile))
+  putStrLn (filePath lastFile ++ " has " ++ show (fileSize lastFile))
+
+  let dirs = sortOn filePath (map fileDir (files listing))
+  putStrLn (show (length dirs))
 
 debug (listing, logLines, message) = trace (show (length logLines) ++ " with " ++ show (length (files listing)) ++ " in " ++ show (dirPath listing) ++ " : " ++ message)
 
@@ -94,16 +99,13 @@ parseDirListing (listing, logLines) = do
       let newListing = debug (listing, remainingLogLines, "    [parseDirListing] " ++ line) $ parseEntry (listing, line)
       parseDirListing (newListing, remainingLogLines)
 
-parseSize :: [Char] -> Int
-parseSize size = read size
-
 parseEntry :: (DirectoryListing pathParts fileEntries, [Char]) ->
   DirectoryListing pathParts fileEntries
 
 parseEntry (listing, ('d':'i':'r':' ':_)) = listing
 parseEntry (listing, entry) = case break (== ' ') entry of
   (size, _ : filename) -> do
-    let file = FileEntry (filename:(dirPath listing)) (parseSize size)
+    let file = FileEntry (filename:(dirPath listing)) (read size)
     trace (show (filePath file) ++ " : " ++ show (fileSize file)) $
       DirectoryListing (dirPath listing) (file:(files listing))
   _ -> listing
