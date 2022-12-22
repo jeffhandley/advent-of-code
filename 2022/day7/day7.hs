@@ -26,27 +26,24 @@ rootDir (DirectoryListing pathParts fileEntries) = DirectoryListing [] fileEntri
 formatPath :: [String] -> String
 formatPath pathParts = '/':(intercalate "/" (reverse pathParts))
 
-getLog :: [String] -> IO String
-getLog [filename] = readFile filename
-getLog ["--", filename] = readFile filename
-getLog _ = pure ""
+sizeLimit = 100000
 
 main = do
-  args <- getArgs
-  inputData <- getLog args
-  let dirEntries = parentEntries (parseCommandLog inputData)
-  let resolved = resolveParentPaths dirEntries
-  let aggregated = toList (fromListWith (+) resolved)
-  let withinLimit = filter (\(path, size) -> size <= 100000) aggregated
-  let parentmost = filter (\(path:parentPath, size) -> isParentmost (parentPath, withinLimit)) withinLimit
-  let sumWithinLimit = sumSizes parentmost
-  let sorted = sortBy (\(_, size1) (_, size2) -> compare size2 size1) parentmost
+  inputData <- readFile "input/command.log"
+  let dirEntries = ancestors (withinLimit sizeLimit (flattenAncestors (parentEntries (processLog inputData))))
+  let sumWithinLimit = sumSizes dirEntries
+
+  let sorted = sortBy (\(_, size1) (_, size2) -> compare size2 size1) dirEntries
   let formatted = map (\(path, size) -> formatPath path ++ " : " ++ show size) sorted
 
   putStrLn (intercalate "\n" formatted)
-  putStrLn ("\nFolders within limit: " ++ show (length parentmost) ++ ". Total size: " ++ show sumWithinLimit)
+  putStrLn ("\nFolders within limit: " ++ show (length dirEntries) ++ ". Total size: " ++ show sumWithinLimit)
 
+ancestors :: [([String], Int)] -> [([String], Int)]
+ancestors dirEntries = filter (\(path:parentPath, _) -> isParentmost (parentPath, dirEntries)) dirEntries
 
+withinLimit :: Int -> [([String], Int)] -> [([String], Int)]
+withinLimit sizeLimit = filter (\(path, size) -> size <= sizeLimit)
 
 sumSizes :: [([String], Int)] -> Int
 sumSizes [] = 0
@@ -59,7 +56,7 @@ isParentmost :: ([String], [([String], Int)]) -> Bool
 isParentmost (parentPath, list) = (find (\(path, _) -> path == parentPath) list) == Nothing
 
 entriesWithAncestors :: [([String], Int)] -> [([String], Int)]
-entriesWithAncestors fileEntries = filter isDescendent fileEntries
+entriesWithAncestors = filter isDescendent
 
 parentEntry :: ([String], Int) -> ([String], Int)
 parentEntry (path:parent, size) = (parent, size)
@@ -67,15 +64,12 @@ parentEntry (path:parent, size) = (parent, size)
 parentEntries :: [([String], Int)] -> [([String], Int)]
 parentEntries fileEntries = map parentEntry (entriesWithAncestors fileEntries)
 
-resolveParentPaths :: [([String], Int)] -> [([String], Int)]
-resolveParentPaths [] = []
-resolveParentPaths fileList = fileList ++ resolveParentPaths (parentEntries fileList)
+flattenAncestors :: [([String], Int)] -> [([String], Int)]
+flattenAncestors [] = []
+flattenAncestors fileList = toList(fromListWith (+) (fileList ++ flattenAncestors (parentEntries fileList)))
 
-parseCommandLog :: String -> [([String], Int)]
-parseCommandLog commandLog = parseCommandLogToFileEntries commandLog
-
-parseCommandLogToFileEntries :: String -> [([String], Int)]
-parseCommandLogToFileEntries commandLog = parseCommandLines (DirectoryListing [] [], lines commandLog)
+processLog :: String -> [([String], Int)]
+processLog commandLog = parseCommandLines (DirectoryListing [] [], lines commandLog)
 
 parseCommandLines :: (DirectoryListing [String] [String], [String]) -> [([String], Int)]
 parseCommandLines (listing, []) = files listing
