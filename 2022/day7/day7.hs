@@ -37,7 +37,7 @@ sortByPath :: [([String], size)] -> [([String], size)]
 sortByPath = sortBy (compare `on` (\(path, _) -> formatPath path))
 
 main = do
-  commandLog <- readFile "input/command.log"
+  commandLog <- readFile "input.log"
 
   -- Process the log to build the list of directories with their total sizes
   -- Flatten the ancestors to produce a full (flattened) tree of directories and sizes
