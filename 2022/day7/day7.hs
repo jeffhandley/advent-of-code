@@ -3,6 +3,7 @@ module Day7 where
 import Data.Char (isDigit)
 import Data.Function
 import Data.List
+import Data.Maybe (fromMaybe)
 import Data.Map (fromList, fromListWith, toList)
 import Debug.Trace (trace)
 import System.Directory (doesFileExist)
@@ -26,38 +27,76 @@ rootDir (DirectoryListing pathParts fileEntries) = DirectoryListing [] fileEntri
 formatPath :: [String] -> String
 formatPath pathParts = '/':(intercalate "/" (reverse pathParts))
 
-formatEntries :: [(String, Int)] -> String
-formatEntries entries = intercalate "\n" (map (\(path, size) -> path ++ " : " ++ show size) entries)
+formatEntry :: (([String], Int) -> Maybe String) -> ([String], Int) -> String
+formatEntry indicator = (\(path, size) -> formatPath path ++ " : " ++ show size ++ fromMaybe "" (indicator (path, size)))
 
-sizeLimit = 100000
+formatEntries :: (([String], Int) -> Maybe String) -> [([String], Int)] -> String
+formatEntries indicator = (\entries -> intercalate "\n" (map (formatEntry indicator) entries))
+
+sortByPath :: [([String], size)] -> [([String], size)]
+sortByPath = sortBy (\(path1, _) (path2, _) -> compare (formatPath path1) (formatPath path2))
+
+sortBySizeDesc :: [(path, Int)] -> [(path, Int)]
+sortBySizeDesc = sortBy (\(_, size1) (_, size2) -> compare size2 size1)
 
 main = do
   commandLog <- readFile "input/command.log"
 
-  let (dirEntries, sumWithinLimit) = sumSizesWithinLimit (withinLimit sizeLimit (flattenAncestors (parentEntries (processLog commandLog))))
+  -- Process the log to build the list of directories with their total sizes
+  -- Flatten the ancestors to produce a full (flattened) tree of directories and sizes
+  let dirEntries = flattenAncestors (parentEntries (processLog commandLog))
 
-  putStrLn ("\n\n" ++ (formatEntries dirEntries))
-  putStrLn ("\nFolders within limit: " ++ show (length dirEntries) ++ ". Total size: " ++ show sumWithinLimit)
+  -- Part One: Find directories with accumulated sizes under the size limit.
+  --           Sum up those directories' accumulated sizes (without de-duping the sizes) for the answer.
+  --           Sort the directories by path for sake of display
+  let sizeLimit = 100000
+  let withinLimit = (\(_, size) -> size <= sizeLimit)
+  let indicateWithinLimit = (\entry -> if withinLimit entry then Just " (small enough)" else Nothing)
+
+  let (sumWithinLimit, dirsWithinLimit) = accumulateSizes (filter withinLimit dirEntries)
+
+  putStrLn ("~~~~~~~~~~~~~~~~~~ PART ONE ~~~~~~~~~~~~~~~~~~")
+  putStrLn (formatEntries indicateWithinLimit (sortByPath dirEntries))
+  putStrLn ("")
+  putStrLn ("Number of directories within limit:     " ++ show (length dirsWithinLimit))
+  putStrLn ("Total size of directories within limit: " ++ show sumWithinLimit ++ " [PART ONE ANSWER]")
+
+  -- Part Two: Find directories with accumulated sizes above the space needed to free up.
+  --           Then identify the smallest directory that can be deleted to free up enough space.
+  --           To prepare, we first need to calculate how much disk space is used and how
+  --           much space needs to be freed up. We do that by finding the root directory's size.
+  let diskCapacity = 70000000
+  let spaceNeeded  = 30000000
+
+  let totalSizeUsed = maybe 0 (\(_, size) -> size) (find (\(path, size) -> length path == 0) dirEntries)
+  let (freeSpace, spaceToFree) = (diskCapacity - totalSizeUsed, spaceNeeded - freeSpace)
+  let bigEnough = (\(_, size) -> size >= spaceToFree)
+  let indicateBigEnough = (\entry -> if bigEnough entry then Just " (big enough)" else Nothing)
+
+  let (dirToDelete, spaceFreed) = findSmallest (filter bigEnough dirEntries)
+
+  putStrLn ("")
+  putStrLn ("~~~~~~~~~~~~~~~~~~ PART TWO ~~~~~~~~~~~~~~~~~~")
+  putStrLn (formatEntries indicateBigEnough (sortByPath dirEntries))
+  putStrLn ("")
+  putStrLn ("Total Disk Capacity : " ++ show diskCapacity)
+  putStrLn ("Total Space Used    : " ++ show totalSizeUsed)
+  putStrLn ("Total Space Free    : " ++ show freeSpace)
+  putStrLn ("Space Needed        : " ++ show spaceNeeded)
+  putStrLn ("Space to Free       : " ++ show spaceToFree)
+  putStrLn ("")
+  putStrLn ("Directory to delete : " ++ formatPath dirToDelete)
+  putStrLn ("Size to be Freed    : " ++ show spaceFreed ++ " [PART TWO ANSWER]")
 
 
--- ancestorsOnly :: [([String], Int)] -> [([String], Int)]
--- ancestorsOnly dirEntries = filter (\(path:parentPath, _) -> isParentmost (parentPath, dirEntries)) dirEntries
+findSmallest :: [(path, Int)] -> (path, Int)
+findSmallest = minimumBy (compare `on` snd)
 
-sumSizesWithinLimit :: [([String], Int)] -> ([(String, Int)], Int)
-sumSizesWithinLimit entries = (map (\(path, size) -> (formatPath path, size)) entries, sumSizes entries)
-
-withinLimit :: Int -> [([String], Int)] -> [([String], Int)]
-withinLimit sizeLimit = filter (\(path, size) -> size <= sizeLimit)
-
-sumSizes :: [(path, Int)] -> Int
-sumSizes [] = 0
-sumSizes ((_, size):entries) = size + sumSizes entries
+accumulateSizes :: [(path, Int)] -> (Int, [(path, Int)])
+accumulateSizes = mapAccumL (\acc (path, size) -> (acc + size, (path, size))) 0
 
 isDescendent :: ([String], Int) -> Bool
-isDescendent (path, _) = length path > 1
-
-isParentmost :: ([String], [([String], Int)]) -> Bool
-isParentmost (parentPath, list) = (find (\(path, _) -> path == parentPath) list) == Nothing
+isDescendent (path, _) = length path > 0
 
 entriesWithAncestors :: [([String], Int)] -> [([String], Int)]
 entriesWithAncestors = filter isDescendent
