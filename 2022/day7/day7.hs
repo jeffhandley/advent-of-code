@@ -1,18 +1,26 @@
 module Day7 where
 
+import Data.Char (isDigit)
+import Data.Function
 import Data.List
+import Data.Map (fromListWith, toList)
 import Debug.Trace (trace)
 import System.Directory (doesFileExist)
 import System.Environment (getArgs)
 
 data FileEntry pathParts fileSize = FileEntry [String] Int
-filePath (FileEntry pathParts fileSize) = "/" ++ (intercalate "/" (reverse pathParts))
+-- filePath (FileEntry pathParts fileSize) = "/" ++ (intercalate "/" (reverse pathParts))
 fileSize (FileEntry pathParts fileSize) = fileSize
-fileDir (FileEntry pathParts fileSize) = FileEntry (tail pathParts) fileSize
+-- toParent (FileEntry [] fileSize) = FileEntry [] fileSize
+-- toParent (FileEntry pathParts fileSize) = FileEntry (tail pathParts) fileSize
+-- toFileList fileEntries = map (\(entry) -> (filePath entry, fileSize entry)) fileEntries
 
 data DirectoryListing pathParts fileEntries = DirectoryListing [String] [FileEntry [String] Int]
 dirPath (DirectoryListing pathParts fileEntries) = pathParts
 files (DirectoryListing pathParts fileEntries) = fileEntries
+
+addFile ((DirectoryListing pathParts fileEntries), filename, size) =
+  DirectoryListing pathParts ((FileEntry (filename:pathParts) size):fileEntries)
 
 parentDir :: (DirectoryListing [String] [String]) -> (DirectoryListing [String] [String])
 parentDir (DirectoryListing (_:parent) fileEntries) =
@@ -29,83 +37,47 @@ rootDir (DirectoryListing pathParts fileEntries) =
 main = do
   args <- getArgs
   inputData <- getLog args
-  let pathParts = []
-  let fileEntries = []
-  let (listing,_) = parseLog (DirectoryListing pathParts fileEntries, lines inputData)
+  let listing = parseLog (DirectoryListing [] [], lines inputData)
 
-  let firstFile = last (files listing)
-  let lastFile = head (files listing)
-  putStrLn (filePath firstFile ++ " has " ++ show (fileSize firstFile))
-  putStrLn (filePath lastFile ++ " has " ++ show (fileSize lastFile))
 
-  let dirs = sortOn filePath (map fileDir (files listing))
-  putStrLn (show (length dirs))
 
-debug (listing, logLines, message) = trace (show (length logLines) ++ " with " ++ show (length (files listing)) ++ " in " ++ show (dirPath listing) ++ " : " ++ message)
+  putStrLn (show (length (files listing)))
+
+-- aggregateSizes fileList | length fileList == 1 = fileList
+
+-- aggregateSizes fileList = do
+--   let parents = toFileList (map toParent fileList)
+--   let grouped = fromListWith (+) asList
+
+--   length aggregated
 
 getLog [filename] = readFile filename
 getLog ["--", filename] = readFile filename
 getLog _ = pure ""
 
-parseLog :: (DirectoryListing [String] [String], [String]) ->
-  (DirectoryListing [String] [String], [String])
-
-parseLog (listing, ('$':' ':command) : logLines) = do
-  let (nextListing, remainingLogLines) = debug (listing, logLines, "[parseLog:]") (parseCommand (listing, command, logLines))
-  debug (nextListing, remainingLogLines, "[:parseLog]") parseLog (nextListing, remainingLogLines)
-
-parseLog (listing, []) =
-  debug (listing, [], "[parseLog] Done") $
-  (listing, [])
-
-parseLog (listing, line : logLines) =
-  debug (listing, logLines, "[parseLog] Unrecognized line: " ++ line) $
-  parseLog (listing, logLines)
+parseLog :: (DirectoryListing [String] [String], [String]) -> DirectoryListing [String] [String]
+parseLog (listing, []) = listing
+parseLog (listing, ('$':' ':command) : logLines) = parseLog (parseCommand (listing, command, logLines))
+parseLog (listing, line : logLines) = parseLog (listing, logLines)
 
 parseCommand :: (DirectoryListing [String] [String], [Char], [String]) ->
   (DirectoryListing [String] [String], [String])
 
-parseCommand (listing, ('c':'d':' ':'.':'.':[]), logLines) =
-  debug (listing, logLines, "  [parseCommand] cd ..") $
-  (parentDir listing, logLines)
-
-parseCommand (listing, ('c':'d':' ':'/':[]), logLines) =
-  debug (listing, logLines, "  [parseCommand] cd /") $
-  (rootDir listing, logLines)
-
-parseCommand (listing, ('c':'d':' ':child), logLines) =
-  debug (listing, logLines, "  [parseCommand] cd " ++ child) $
-  (childDir (listing, child), logLines)
-
-parseCommand (listing, "ls", logLines) = do
-  let (newListing, remainingLogLines) = debug (listing, logLines, "  [parseCommand:] ls") (parseDirListing (listing, logLines))
-  debug (newListing, remainingLogLines, "  [:parseCommand]") (newListing, remainingLogLines)
-
-parseCommand (listing, cmd, logLines) =
-  debug (listing, logLines, "  [parseCommand] Unrecognized command: " ++ cmd) $
-  (listing, logLines)
+parseCommand (listing, ('c':'d':' ':'.':'.':[]), logLines) = (parentDir listing, logLines)
+parseCommand (listing, ('c':'d':' ':'/':[]), logLines) = (rootDir listing, logLines)
+parseCommand (listing, ('c':'d':' ':child), logLines) = (childDir (listing, child), logLines)
+parseCommand (listing, "ls", logLines) = parseDirListing (listing, logLines)
+parseCommand (listing, cmd, logLines) = (listing, logLines)
 
 parseDirListing :: (DirectoryListing pathParts fileEntries, [String]) ->
   (DirectoryListing pathParts fileEntries, [String])
 
 parseDirListing (listing, []) = (listing, [])
-parseDirListing (listing, logLines) = do
-  let line = head logLines
-  let remainingLogLines = tail logLines
+parseDirListing (listing, logLines) | head (head logLines) == '$' = (listing, logLines)
+parseDirListing (listing, logLines) = parseDirListing (parseEntry (listing, words (head logLines)), tail logLines)
 
-  case line of
-    ('$':_) -> (listing, logLines)
-    _ -> do
-      let newListing = debug (listing, remainingLogLines, "    [parseDirListing] " ++ line) $ parseEntry (listing, line)
-      parseDirListing (newListing, remainingLogLines)
-
-parseEntry :: (DirectoryListing pathParts fileEntries, [Char]) ->
+parseEntry :: (DirectoryListing pathParts fileEntries, [String]) ->
   DirectoryListing pathParts fileEntries
 
-parseEntry (listing, ('d':'i':'r':' ':_)) = listing
-parseEntry (listing, entry) = case break (== ' ') entry of
-  (size, _ : filename) -> do
-    let file = FileEntry (filename:(dirPath listing)) (read size)
-    trace (show (filePath file) ++ " : " ++ show (fileSize file)) $
-      DirectoryListing (dirPath listing) (file:(files listing))
-  _ -> listing
+parseEntry (listing, (size:filename:[])) | isDigit(head size) = addFile (listing, filename, read size)
+parseEntry (listing, (size:filename:[])) | size == "dir" = listing
