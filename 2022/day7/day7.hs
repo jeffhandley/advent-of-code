@@ -7,16 +7,20 @@ import Numeric.Natural
 main :: IO ()
 main = do
   args <- getArgs
-  let file = getInputFilename args
-  inputData <- getInputData file
-  putStrLn inputData
+  inputData <- getLog args
+  parseLog (lines inputData)
 
-getInputFilename :: [String] -> String
-getInputFilename args =
-  case args of
-    [filename] -> filename
-    ["--", filename] -> filename
-    _ -> ""
+getLog [filename] = readFile filename
+getLog ["--", filename] = readFile filename
+getLog _ = pure ""
 
-getInputData "" = pure ""
-getInputData filename = readFile filename
+parseLog logLines = do
+  case logLines of
+    (line:remaining) -> do
+      parseLogLine line
+      parseLog remaining
+    [] -> pure ()
+
+parseLogLine "" = pure ()
+parseLogLine line = do
+  putStrLn line
