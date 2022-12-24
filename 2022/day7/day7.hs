@@ -65,26 +65,17 @@ main = do
    `{size} {file}` lines that provide file/size data for the current directory. That data
    is used to construct full list of files that exist across the file system. -}
 processLog :: String -> [([String], Int)]
-processLog commandLog = parseCommandLines (DirectoryListing [] [], lines commandLog)
+processLog commandLog = parseCommandLog (DirectoryListing [] [], lines commandLog)
 
-parseCommandLines :: (DirectoryListing [String] [String], [String]) -> [([String], Int)]
-parseCommandLines (listing, []) = files listing
-parseCommandLines (listing, ('$':' ':'c':'d':' ':dir):logLines) = parseCommandLines (changeDirectory dir listing logLines)
-parseCommandLines (listing, ('$':' ':command) : logLines) = parseCommandLines (parseCommand command listing logLines)
+parseCommandLog :: (DirectoryListing [String] [String], [String]) -> [([String], Int)]
+parseCommandLog (listing, []) = files listing
+parseCommandLog (listing, ('$':' ':'c':'d':' ':dir):logLines) = parseCommandLog ((changeDirectory dir listing), logLines)
+parseCommandLog (listing, ("$ ls"):logLines) = parseCommandLog (parseDirListing listing logLines)
 
-changeDirectory :: String -> DirectoryListing [String] [String] -> [String] -> (DirectoryListing [String] [String], [String])
-changeDirectory "/" = (\listing logLines -> (rootDir listing, logLines))
-changeDirectory ".." = (\listing logLines -> (parentDir listing, logLines))
-changeDirectory dir = (\listing logLines -> (childDir dir listing, logLines))
-
-parseCommand :: String -> DirectoryListing [String] [String] -> [String] -> (DirectoryListing [String] [String], [String])
-parseCommand "ls" listing = (\logLines -> parseDirListing (listing, logLines))
-parseCommand cmd listing = (\logLines -> (listing, logLines))
-
-parseDirListing :: (DirectoryListing pathParts fileEntries, [String]) -> (DirectoryListing pathParts fileEntries, [String])
-parseDirListing (listing, []) = (listing, [])
-parseDirListing (listing, logLines) | head (head logLines) == '$' = (listing, logLines)
-parseDirListing (listing, logLines) = parseDirListing (parseEntry (listing, words (head logLines)), tail logLines)
+parseDirListing :: DirectoryListing pathParts fileEntries -> [String] -> (DirectoryListing pathParts fileEntries, [String])
+parseDirListing listing [] = (listing, [])
+parseDirListing listing logLines | head (head logLines) == '$' = (listing, logLines)
+parseDirListing listing logLines = parseDirListing (parseEntry (listing, words (head logLines))) (tail logLines)
 
 parseEntry :: (DirectoryListing pathParts fileEntries, [String]) -> DirectoryListing pathParts fileEntries
 parseEntry (listing, (sizeOrDir:filename:[])) | sizeOrDir == "dir" = listing
@@ -99,6 +90,11 @@ dirPath (DirectoryListing pathParts fileEntries) = pathParts
 files (DirectoryListing pathParts fileEntries) = fileEntries
 addFile ((DirectoryListing pathParts fileEntries), filename, size) =
   DirectoryListing pathParts ((filename:pathParts, size):fileEntries)
+
+changeDirectory :: String -> DirectoryListing [String] [String] -> DirectoryListing [String] [String]
+changeDirectory "/" = rootDir
+changeDirectory ".." = parentDir
+changeDirectory dir = childDir dir
 
 rootDir :: DirectoryListing [String] [String] -> DirectoryListing [String] [String]
 rootDir listing = DirectoryListing [] (files listing)
