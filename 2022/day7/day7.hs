@@ -69,14 +69,17 @@ processLog commandLog = parseCommandLines (DirectoryListing [] [], lines command
 
 parseCommandLines :: (DirectoryListing [String] [String], [String]) -> [([String], Int)]
 parseCommandLines (listing, []) = files listing
-parseCommandLines (listing, ('$':' ':command) : logLines) = parseCommandLines (parseCommand (listing, command, logLines))
+parseCommandLines (listing, ('$':' ':'c':'d':' ':dir):logLines) = parseCommandLines (changeDirectory dir listing logLines)
+parseCommandLines (listing, ('$':' ':command) : logLines) = parseCommandLines (parseCommand command listing logLines)
 
-parseCommand :: (DirectoryListing [String] [String], [Char], [String]) -> (DirectoryListing [String] [String], [String])
-parseCommand (listing, ('c':'d':' ':child), logLines) | child == ".." = (parentDir listing, logLines)
-parseCommand (listing, ('c':'d':' ':child), logLines) | child == "/" = (rootDir listing, logLines)
-parseCommand (listing, ('c':'d':' ':child), logLines) = (childDir (listing, child), logLines)
-parseCommand (listing, "ls", logLines) = parseDirListing (listing, logLines)
-parseCommand (listing, cmd, logLines) = (listing, logLines)
+changeDirectory :: String -> DirectoryListing [String] [String] -> [String] -> (DirectoryListing [String] [String], [String])
+changeDirectory "/" = (\listing logLines -> (rootDir listing, logLines))
+changeDirectory ".." = (\listing logLines -> (parentDir listing, logLines))
+changeDirectory dir = (\listing logLines -> (childDir dir listing, logLines))
+
+parseCommand :: String -> DirectoryListing [String] [String] -> [String] -> (DirectoryListing [String] [String], [String])
+parseCommand "ls" listing = (\logLines -> parseDirListing (listing, logLines))
+parseCommand cmd listing = (\logLines -> (listing, logLines))
 
 parseDirListing :: (DirectoryListing pathParts fileEntries, [String]) -> (DirectoryListing pathParts fileEntries, [String])
 parseDirListing (listing, []) = (listing, [])
@@ -97,14 +100,14 @@ files (DirectoryListing pathParts fileEntries) = fileEntries
 addFile ((DirectoryListing pathParts fileEntries), filename, size) =
   DirectoryListing pathParts ((filename:pathParts, size):fileEntries)
 
-rootDir :: (DirectoryListing [String] [String]) -> (DirectoryListing [String] [String])
-rootDir (DirectoryListing pathParts fileEntries) = DirectoryListing [] fileEntries
+rootDir :: DirectoryListing [String] [String] -> DirectoryListing [String] [String]
+rootDir listing = DirectoryListing [] (files listing)
 
-parentDir :: (DirectoryListing [String] [String]) -> (DirectoryListing [String] [String])
+parentDir :: DirectoryListing [String] [String] -> DirectoryListing [String] [String]
 parentDir (DirectoryListing (_:parent) fileEntries) = DirectoryListing parent fileEntries
 
-childDir :: (DirectoryListing [String] [String], String) -> (DirectoryListing [String] [String])
-childDir (DirectoryListing parent fileEntries, path) = DirectoryListing (path:parent) fileEntries
+childDir :: String -> DirectoryListing [String] [String] -> DirectoryListing [String] [String]
+childDir dir listing = DirectoryListing (dir:(dirPath listing)) (files listing)
 
 {- Logic for processing the file entries to produce entries
    for all ancestor directories, accumulating the total size
