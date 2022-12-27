@@ -4,27 +4,44 @@ module Day8 where
 
 import Control.Monad (liftM2)
 import Data.Char (digitToInt)
+import Data.Function (on)
 import Data.List (maximumBy, partition, transpose)
 
 main = do
   -- https://adventofcode.com/2022/day/8/input
   inputData <- readFile "input.txt"
 
-  -- Each line represents a row of trees; each col is the tree height
+  -- Each line represents a row of trees; each character is the tree height
   -- Map this into a grid of trees with coordinates and heights
   let forest = mapForest (map (map digitToInt) (lines inputData))
 
   {- PART ONE: Count the trees that are visible from any edge of the forest -}
+  putStrLn "[PART ONE] Building a edge visibility map of the forest (this takes a minute)..."
+
   let visibleTrees = filter (\(((x, y), z), visible) -> visible) (mapVisibility forest)
+  let totalVisible = length visibleTrees
 
   putStrLn (unlines (map formatTreeVisibility visibleTrees))
   putStrLn ""
-  putStrLn ("Trees Visible: " ++ show (length visibleTrees) ++ " [PART ONE ANSWER]")
 
   {- PART TWO: Calculate the Scenic Score for every tree and find the highest score
                The Scenic Score is the product of how many trees are visible in all
                directions. Visibility is based on line of sight between a tree and
                an equal or taller tree, with that tree plus all trees between. -}
+  putStrLn "[PART TWO] Calculating the scenic scores of all trees (this takes a minute)..."
+
+  let scenicScores = map (\tree -> (tree, product (
+                                    (viewingDistances tree (treesInRow tree forest)) ++
+                                    (viewingDistances tree (treesInColumn tree forest))
+                                  ))) forest
+
+  let bestView = maximumBy (compare `on` snd) scenicScores
+
+  putStrLn (unlines (map formatScenicScore scenicScores))
+  putStrLn ""
+
+  putStrLn ("Trees Visible: " ++ show totalVisible ++ " [PART ONE ANSWER]")
+  putStrLn ("Best View: " ++ formatScenicScore bestView ++ " [PART TWO ANSWER]")
 
 -- Gets the length of the forest (Y axis)
 forestLength :: [[Int]] -> Int
@@ -64,8 +81,20 @@ mapVisibility forest = map (\tree -> (tree, isVisibleBeforeAfter tree (treesInRo
 
 -- Format a visibility map for printing
 formatTreeVisibility :: (((Int, Int), Int), Bool) -> String
-formatTreeVisibility (((x, y), z), visible) = "(" ++ show x ++ ", " ++ show y ++ ") has height of " ++ show z ++ " and " ++ if visible then "is Visible" else "is Hidden"
+formatTreeVisibility (((x, y), z), visible) = "(" ++ show x ++ "," ++ show y ++ ") has height of " ++ show z ++ " and " ++ if visible then "is Visible" else "is Hidden"
+
+asTallAs :: ((Int, Int), Int) -> ((Int, Int), Int) -> Bool
+asTallAs tree = (\target -> height target >= height tree)
 
 -- Gets the farthest tree visible from the given tree in each direction
-farthestVisibleBeforeAfter :: ((Int, Int), Int) -> ([((Int, Int), Int)], [((Int, Int), Int)]) -> (((Int, Int), Int), ((Int, Int), Int))
-farthestVisibleBeforeAfter tree (before, after) = (last (takeWhile (\seen -> (height seen) >= (height tree)) (reverse before)), last (takeWhile (\seen -> (height seen) >= (height tree)) after))
+viewingDistances :: ((Int, Int), Int) -> ([((Int, Int), Int)], [((Int, Int), Int)]) -> [Int]
+viewingDistances tree (before, after) = let
+  viewBefore = break (asTallAs tree) (reverse before) -- The trees before the break are visible before the boundary
+  viewAfter = break (asTallAs tree) after             -- The first tree after the break is the boundary (or the edge if empty)
+    in [
+      (length (fst viewBefore) + length (take 1 (snd viewBefore))),
+      (length (fst viewAfter) + length (take 1 (snd viewAfter)))
+    ]
+
+formatScenicScore :: (((Int, Int), Int), Int) -> String
+formatScenicScore (((x, y), z), score) = "(" ++ show x ++ "," ++ show y ++ ") has a height of " ++ show z ++ " and a Scenic Score of " ++ show score
