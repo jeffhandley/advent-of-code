@@ -12,12 +12,19 @@ main = do
 
   -- Each line represents a row of trees; each col is the tree height
   -- Map this into a grid of trees with coordinates and heights
-  let forest = mapVisibility (mapForest (map (map digitToInt) (lines inputData)))
-  let visibleTrees = filter (\(((x, y), z), visible) -> visible) forest
+  let forest = mapForest (map (map digitToInt) (lines inputData))
 
-  putStrLn (unlines (map formatTreeVisibility forest))
+  {- PART ONE: Count the trees that are visible from any edge of the forest -}
+  let visibleTrees = filter (\(((x, y), z), visible) -> visible) (mapVisibility forest)
+
+  putStrLn (unlines (map formatTreeVisibility visibleTrees))
   putStrLn ""
   putStrLn ("Trees Visible: " ++ show (length visibleTrees) ++ " [PART ONE ANSWER]")
+
+  {- PART TWO: Calculate the Scenic Score for every tree and find the highest score
+               The Scenic Score is the product of how many trees are visible in all
+               directions. Visibility is based on line of sight between a tree and
+               an equal or taller tree, with that tree plus all trees between. -}
 
 -- Gets the length of the forest (Y axis)
 forestLength :: [[Int]] -> Int
@@ -47,7 +54,7 @@ treesInColumn ((x, y), z) = partition (\((_, y2), _) -> y2 < y) . filter (\((x2,
 height :: ((Int, Int), Int) -> Int
 height ((_, _), height) = height
 
--- Gets the tallest tree height for both partitions
+-- Gets the tallest tree height for both partitions and uses that to compare against the given tree to determine visibility
 isVisibleBeforeAfter :: ((Int, Int), Int) -> ([((Int, Int), Int)], [((Int, Int), Int)]) -> Bool
 isVisibleBeforeAfter tree (before, after) = (height tree) > maximum ([-1]++(map height before)) || (height tree) > maximum ([-1]++(map height after))
 
@@ -58,3 +65,7 @@ mapVisibility forest = map (\tree -> (tree, isVisibleBeforeAfter tree (treesInRo
 -- Format a visibility map for printing
 formatTreeVisibility :: (((Int, Int), Int), Bool) -> String
 formatTreeVisibility (((x, y), z), visible) = "(" ++ show x ++ ", " ++ show y ++ ") has height of " ++ show z ++ " and " ++ if visible then "is Visible" else "is Hidden"
+
+-- Gets the farthest tree visible from the given tree in each direction
+farthestVisibleBeforeAfter :: ((Int, Int), Int) -> ([((Int, Int), Int)], [((Int, Int), Int)]) -> (((Int, Int), Int), ((Int, Int), Int))
+farthestVisibleBeforeAfter tree (before, after) = (last (takeWhile (\seen -> (height seen) >= (height tree)) (reverse before)), last (takeWhile (\seen -> (height seen) >= (height tree)) after))
