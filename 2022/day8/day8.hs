@@ -8,18 +8,16 @@ import Data.List (maximumBy, partition, transpose)
 
 main = do
   -- https://adventofcode.com/2022/day/8/input
-  inputData <- readFile "sample.txt"
+  inputData <- readFile "input.txt"
 
   -- Each line represents a row of trees; each col is the tree height
   -- Map this into a grid of trees with coordinates and heights
-  let forest = mapForest (map (map digitToInt) (lines inputData))
+  let forest = mapVisibility (mapForest (map (map digitToInt) (lines inputData)))
+  let visibleTrees = filter (\(((x, y), z), visible) -> visible) forest
 
-  let visibleInRow = isVisible (forest !! 24) (treesInRow (forest !! 24) forest)
-  let visibleInCol = isVisible (forest !! 24) (treesInColumn (forest !! 24) forest)
-
-  putStrLn (show forest)
+  putStrLn (unlines (map formatTreeVisibility forest))
   putStrLn ""
-  print (visibleInRow, visibleInCol)
+  putStrLn ("Trees Visible: " ++ show (length visibleTrees) ++ " [PART ONE ANSWER]")
 
 -- Gets the length of the forest (Y axis)
 forestLength :: [[Int]] -> Int
@@ -39,7 +37,7 @@ getTree col row trees = ((col, row), trees !! row !! col)
 
 -- Get all trees in the same row, split into the before and after (and excluding the specified tree)
 treesInRow :: ((Int, Int), Int) -> [((Int, Int), Int)] -> ([((Int, Int), Int)], [((Int, Int), Int)])
-treesInRow ((x, y), z) = partition (\((x2, _), _) -> x2 == x) . filter (\((x2, y2), _) -> y2 == y && x2 /= x)
+treesInRow ((x, y), z) = partition (\((x2, _), _) -> x2 < x) . filter (\((x2, y2), _) -> y2 == y && x2 /= x)
 
 -- Get all trees in the same column, split into the before and after (and excluding the specified tree)
 treesInColumn :: ((Int, Int), Int) -> [((Int, Int), Int)] -> ([((Int, Int), Int)], [((Int, Int), Int)])
@@ -50,5 +48,13 @@ height :: ((Int, Int), Int) -> Int
 height ((_, _), height) = height
 
 -- Gets the tallest tree height for both partitions
-isVisible :: ((Int, Int), Int) -> ([((Int, Int), Int)], [((Int, Int), Int)]) -> (Bool, Bool)
-isVisible tree (before, after) = ((height tree) > maximum ([-1]++(map height before)), (height tree) > maximum ([-1]++(map height after)))
+isVisibleBeforeAfter :: ((Int, Int), Int) -> ([((Int, Int), Int)], [((Int, Int), Int)]) -> Bool
+isVisibleBeforeAfter tree (before, after) = (height tree) > maximum ([-1]++(map height before)) || (height tree) > maximum ([-1]++(map height after))
+
+-- Given the forest map, determine if each tree is visible
+mapVisibility :: [((Int, Int), Int)] -> [(((Int, Int), Int), Bool)]
+mapVisibility forest = map (\tree -> (tree, isVisibleBeforeAfter tree (treesInRow tree forest) || isVisibleBeforeAfter tree (treesInColumn tree forest))) forest
+
+-- Format a visibility map for printing
+formatTreeVisibility :: (((Int, Int), Int), Bool) -> String
+formatTreeVisibility (((x, y), z), visible) = "(" ++ show x ++ ", " ++ show y ++ ") has height of " ++ show z ++ " and " ++ if visible then "is Visible" else "is Hidden"
