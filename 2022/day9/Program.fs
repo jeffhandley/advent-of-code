@@ -1,4 +1,5 @@
-﻿open System.IO
+﻿// https://adventofcode.com/2022/day/9
+open System.IO
 
 type Pos = struct
     val X: int
@@ -19,24 +20,24 @@ let parseMoveSeq (move: string) =
     | [| "R"; count |] -> seq { for c in 1 .. (int count) -> movePos +1 0 }
     | _ -> []
 
-// Pull the tail from the head. If they are within 1 cell in any direction,
-// including diagonally, then leave the tail where it is. Otherwise, move
-// the tail in the direction needed to follow the head, moving up to 1 cell
-// on each axis.
+// Pull from the previous knot in the rope. If they are within 1 cell in
+// any direction, including diagonally, then no movement is needed.
+// Otherwise, move to follow the head, moving 0 or 1 position on each axis.
 let pullPos (h: Pos) (t: Pos) : Pos =
     match (h.X - t.X, h.Y - t.Y) with
     | (x,y) when abs x <= 1 && abs y <= 1 -> t
     | (x,y) -> movePos (x.CompareTo(0)) (y.CompareTo(0)) t
 
 let processRopeMoves (knotCount: int) (verbosity: int) =
-    // Create the rope with all knot positions initialized to (0,0).
+    // Create the rope with all knot positions initialized to (0, 0).
     let mutable knots = Array.create knotCount (Pos(0, 0))
 
     // Track the visits for all knots in the rope.
     let mutable visits = Array.create knotCount [Pos (0, 0)]
 
     // For each line in the input file, parse the line into a sequence of moves.
-    // Then execute those moves and track the head and tail visits.
+    // Then execute those moves and track the visits of every knot in the rope.
+    // https://adventofcode.com/2022/day/9/input
     for line in File.ReadAllLines("input.txt") do
         let (H, T) = (Array.head knots, Array.last knots)
 
